@@ -131,8 +131,9 @@
 <script>
   // ======================= CONFIGURAÇÃO DOS PONTOS DE INTERESSE (POIs) =======================
   const pois = [
-    { name: "Sala A (Esquerda)", x: 80, y: 150, color: "#e74c3c", id: "salaA" },
-    { name: "Sala B (Direita)",  x: 220, y: 150, color: "#2ecc71", id: "salaB" }
+    { name: "Banheiro Feminino", x: 80, y: 150, color: "#e74c3c", id: "salaA" },
+    { name: "Banheiro Masculino",  x: 220, y: 150, color: "#2ecc71", id: "salaB" }
+    { name: "Centro Acadêmico", x: 290, y: 150, color: "#f39c12", id: "salaC" }
   ];
 
   const userPos = { x: 150, y: 350 };    // posição do usuário no mapa 2D
@@ -164,12 +165,12 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(userPos.x, userPos.y);   // ponto inicial (150,350)
-    ctx.lineTo(centerNode.x, centerNode.y); // vértice (150,200)
-    ctx.lineTo(220, 150);                // ramo direito do L (destino Sala B)
-    ctx.moveTo(centerNode.x, centerNode.y);
-    ctx.lineTo(80, 150);                // ramo esquerdo (destino Sala A)
-    ctx.stroke();
+ctx.moveTo(userPos.x, userPos.y);
+ctx.lineTo(centerNode.x, centerNode.y);
+ctx.lineTo(290, 150);        // vai até a Sala C (mais à direita)
+ctx.moveTo(centerNode.x, centerNode.y);
+ctx.lineTo(80, 150);         // Sala A (esquerda)
+ctx.stroke();
 
     if (destinoAtual) {
       // Rota destacada (tracejada) do usuário até o destino selecionado
@@ -177,10 +178,10 @@
       ctx.strokeStyle = '#0056b3';
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
-      ctx.moveTo(userPos.x, userPos.y);
-      ctx.lineTo(centerNode.x, centerNode.y);
-      ctx.lineTo(destinoAtual.x, destinoAtual.y);
-      ctx.stroke();
+ctx.moveTo(userPos.x, userPos.y);
+ctx.lineTo(centerNode.x, centerNode.y);
+ctx.lineTo(destinoAtual.x, destinoAtual.y);  // já usa a coordenada da Sala C
+ctx.stroke();
       ctx.setLineDash([]);
     }
 
@@ -281,6 +282,30 @@
       corDestino = '#2ecc71';
       posFinal = '2.0 0 -3.0';
     }
+    // Dentro da função gerarMigalhas, adicione mais um else if:
+if (salaID === 'salaA') {
+  extensao = [
+    { x: -1.0, z: -3.0 },
+    { x: -2.0, z: -3.0 }
+  ];
+  corDestino = '#e74c3c';
+  posFinal = '-2.0 0 -3.0';
+} else if (salaID === 'salaB') {
+  extensao = [
+    { x: 1.0, z: -3.0 },
+    { x: 2.0, z: -3.0 }
+  ];
+  corDestino = '#2ecc71';
+  posFinal = '2.0 0 -3.0';
+} else if (salaID === 'salaC') {   // NOVO
+  extensao = [
+    { x: 1.0, z: -3.0 },
+    { x: 2.0, z: -3.0 },
+    { x: 3.0, z: -3.0 }   // anda 1 metro a mais que a Sala B
+  ];
+  corDestino = '#f39c12';
+  posFinal = '3.0 0 -3.0';
+}
     const caminhoCompleto = baseCaminho.concat(extensao);
     // Cria os cilindros (migalhas)
     caminhoCompleto.forEach(ponto => {
