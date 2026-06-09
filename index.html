@@ -124,7 +124,7 @@
       <canvas id="indoor-map"></canvas>
     </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa | Toque exatamente sobre o círculo desejado</div>
+    <div class="info">👆 Arraste o mapa</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -146,16 +146,19 @@
 
 <script>
   // ======================= PONTOS REAIS (metros) - Total 25 metros =======================
+  // Distâncias proporcionais: 5,4,3,4 multiplicadas por 25/16 = 1.5625
+  // Novas distâncias: 7.8125, 6.25, 4.6875, 6.25
+  // Coordenadas: 0; 7.8125; 14.0625; 18.75; 25.0
   const pontosReais = [
     { name: "4050F", xReal: 0,     color: "#e74c3c", id: "sala1" },
-    { name: "4054F", xReal: 7.8125, color: "#3498db", id: "sala2" },
-    { name: "4058F", xReal: 14.0625, color: "#2ecc71", id: "sala3" },
+    { name: "4054F", xReal: 7.81,  color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 14.06, color: "#2ecc71", id: "sala3" },
     { name: "4064F", xReal: 18.75, color: "#f39c12", id: "sala4" },
     { name: "Banheiro ♀", xReal: 25, color: "#9b59b6", id: "fem" }
   ];
 
   const escala = 30;          // 30 pixels por metro
-  const margemLateral = 30;   // aumentado para dar mais espaço
+  const margemLateral = 20;   // espaço extra nas bordas do canvas
 
   const minXReal = Math.min(...pontosReais.map(p => p.xReal));
   const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
@@ -209,6 +212,7 @@
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Corredor: do primeiro ao último ponto
     const xInicioCorredor = realToPixel(minXReal);
     const xFimCorredor = realToPixel(maxXReal);
     ctx.lineWidth = 40;
@@ -219,6 +223,7 @@
     ctx.lineTo(xFimCorredor, 150);
     ctx.stroke();
 
+    // Desenha pontos
     pontos.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x2d, p.y2d, 15, 0, Math.PI * 2);
@@ -261,8 +266,11 @@
 
   function centralizarMapa() {
     if (!mapContainer || canvas.width === 0) return;
+    // Calcula o ponto central do canvas (metade da largura)
     const centroCanvas = canvas.width / 2;
+    // Largura visível do container
     const containerWidth = mapContainer.clientWidth;
+    // Posição de rolagem para centralizar o ponto central do canvas
     const scrollPos = centroCanvas - containerWidth / 2;
     mapContainer.scrollLeft = Math.max(0, scrollPos);
   }
@@ -274,11 +282,8 @@
     return Math.min(Math.max(x, 0), canvas.width);
   }
 
-  // Raio de detecção reduzido para 20px (preciso)
-  const RAIO_DETECCAO = 20;
-
   function encontrarPontoPorPixel(pixelX) {
-    let menorDist = RAIO_DETECCAO;
+    let menorDist = 35;
     let pontoEncontrado = null;
     for (let p of pontos) {
       const dx = Math.abs(pixelX - p.x2d);
@@ -335,6 +340,7 @@
       boasVindas.style.display = 'none';
       domOverlay.style.display = 'block';
       interfaceContainer.style.display = 'flex';
+      // Pequeno atraso para garantir que o canvas já esteja desenhado
       setTimeout(centralizarMapa, 100);
     }
   });
@@ -414,14 +420,19 @@
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = true;
     interfaceContainer.style.display = 'flex';
     drawMap();
+    // Após reexibir o mapa, centralizar novamente
     setTimeout(centralizarMapa, 100);
   }
 
   window.addEventListener('load', () => {
     atualizarPontos2D();
     redimensionarCanvas();
+    // Centraliza o mapa após carregar
     centralizarMapa();
-    window.addEventListener('resize', () => centralizarMapa());
+    // Reajusta centralização se a janela for redimensionada
+    window.addEventListener('resize', () => {
+      centralizarMapa();
+    });
   });
 </script>
 </body>
