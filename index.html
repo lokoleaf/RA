@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Teste 4050F até Banheiro ♀</title>
+  <title>GeoAR Indoor - Corredor 20m com Orientação Sul</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -75,11 +75,33 @@
       background: #fafafa;
       margin: 10px 0;
       -webkit-overflow-scrolling: touch;
+      position: relative;
     }
     #indoor-map {
       display: block;
       background: #fafafa;
       cursor: pointer;
+    }
+    .orientacao {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      pointer-events: none;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .seta-sul {
+      font-size: 20px;
+      transform: rotate(180deg);
+      display: inline-block;
     }
     .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
     #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; text-align: center; }
@@ -111,8 +133,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>GeoAR Indoor - Teste 4050F → Banheiro ♀</h2>
-  <p>Corredor de 16 metros (arraste o mapa)</p>
+  <h2>GeoAR Indoor - Corredor 20m</h2>
+  <p>QR Code na parede sul → Ao fixar, você estará virado para o SUL</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -122,9 +144,14 @@
     <div id="status">🔵 Clique na ORIGEM primeiro</div>
     <div class="map-container" id="map-container">
       <canvas id="indoor-map"></canvas>
+      <div class="orientacao">
+        <span>⬆️ Norte (salas)</span>
+        <span>⬇️ Sul (sua orientação ao fixar a rota)</span>
+        <span class="seta-sul">↓</span>
+      </div>
     </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa → | Dica: para testar, selecione origem 4050F e destino Banheiro ♀</div>
+    <div class="info">👆 Arraste o mapa → | Para ir ao Banheiro ♀, siga as marcas azuis para a DIREITA.</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -145,17 +172,18 @@
 </a-scene>
 
 <script>
-  // ======================= PONTOS REAIS (metros) =======================
+  // ======================= PONTOS REAIS (metros) com distâncias +1 metro =======================
+  // 4050F(0) -> 4054F(6) -> 4058F(11) -> 4064F(15) -> Banheiro♀(20)
   const pontosReais = [
     { name: "4050F", xReal: 0,  color: "#e74c3c", id: "sala1" },
-    { name: "4054F", xReal: 5,  color: "#3498db", id: "sala2" },
-    { name: "4058F", xReal: 9,  color: "#2ecc71", id: "sala3" },
-    { name: "4064F", xReal: 12, color: "#f39c12", id: "sala4" },
-    { name: "Banheiro ♀", xReal: 16, color: "#9b59b6", id: "fem" }
+    { name: "4054F", xReal: 6,  color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 11, color: "#2ecc71", id: "sala3" },
+    { name: "4064F", xReal: 15, color: "#f39c12", id: "sala4" },
+    { name: "Banheiro ♀", xReal: 20, color: "#9b59b6", id: "fem" }
   ];
 
   const escala = 30;          // 30 pixels por metro
-  const margemLateral = 20;   // espaço extra nas bordas do canvas
+  const margemLateral = 20;   // margem nas bordas
 
   const minXReal = Math.min(...pontosReais.map(p => p.xReal));
   const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
@@ -209,7 +237,7 @@
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Corredor: do primeiro ao último ponto
+    // Corredor do primeiro ao último ponto
     const xInicioCorredor = realToPixel(minXReal);
     const xFimCorredor = realToPixel(maxXReal);
     ctx.lineWidth = 40;
@@ -339,7 +367,7 @@
   }
 
   reticulo.addEventListener('chao-encontrado', () => {
-    instrucao.innerText = "Chão detectado! Fixe a rota.";
+    instrucao.innerText = "Chão detectado! Fixe a rota (você está virado para SUL).";
     btnAncorar.style.display = 'block';
   });
   reticulo.addEventListener('chao-perdido', () => {
@@ -392,7 +420,7 @@
     rotaContainer.setAttribute('visible', 'true');
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = false;
     reticulo.setAttribute('visible', 'false');
-    instrucao.innerText = "Navegando! Siga as marcas azuis.";
+    instrucao.innerText = "Navegando! Siga as marcas azuis (direita = Leste).";
     btnAncorar.style.display = 'none';
   });
 
