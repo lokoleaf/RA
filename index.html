@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Selecione Origem e Destino</title>
+  <title>GeoAR Indoor - Mapa Rolável Horizontal</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
-    // Componente detector de chão (hit test)
     AFRAME.registerComponent('detector-chao', {
       init: function () {
         this.xrHitTestSource = null;
@@ -64,13 +63,26 @@
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
       align-items: center; justify-content: center; pointer-events: auto;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .map-container {
+      width: 90vw;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #fafafa;
+      margin: 10px 0;
+      -webkit-overflow-scrolling: touch;
     }
     #indoor-map {
-      border: 2px solid #333; background: #fafafa; border-radius: 8px;
+      display: block;
+      background: #fafafa;
       cursor: pointer;
     }
-    .map-title { position: absolute; top: 20px; font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; }
-    #status { position: absolute; top: 60px; font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; }
+    .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
+    #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; }
     .btn-blue {
       margin-top: 20px; padding: 15px 30px; border: none; border-radius: 25px;
       background: #0056b3; color: white; font-weight: bold; font-size: 16px;
@@ -99,8 +111,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>GeoAR Indoor - Selecione Rota</h2>
-  <p>1º Clique na ORIGEM (onde você está)<br>2º Clique no DESTINO (para onde quer ir)</p>
+  <h2>GeoAR Indoor - Mapa Rolável</h2>
+  <p>Corredor extenso → arraste o mapa horizontalmente</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -108,9 +120,11 @@
   <div id="interface-container">
     <div class="map-title">Selecione a Rota</div>
     <div id="status">🔵 Clique na ORIGEM primeiro</div>
-    <canvas id="indoor-map" width="300" height="400"></canvas>
+    <div class="map-container" id="map-container">
+      <canvas id="indoor-map"></canvas>
+    </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">Dica: Para trocar a origem, clique em outro ponto.</div>
+    <div class="info">👆 Arraste o mapa para os lados para ver todo o corredor.</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -131,21 +145,57 @@
 </a-scene>
 
 <script>
-  // ======================= DEFINIÇÃO DOS PONTOS (POIs) =======================
-  // Cada ponto tem: nome, coordenadas no mapa 2D (pixels) e coordenadas reais (metros)
-  const pontos = [
-    { name: "Banheiro Feminino", x2d: 70, y2d: 200, x3d: -2.0, z3d: 0, color: "#e74c3c", id: "fem" },
-    { name: "Centro (Início)",   x2d: 150, y2d: 200, x3d: 0,    z3d: 0, color: "#3498db", id: "centro" },
-    { name: "Banheiro Masculino",x2d: 220, y2d: 200, x3d: 2.0,  z3d: 0, color: "#2ecc71", id: "masc" },
-    { name: "CA",               x2d: 290, y2d: 200, x3d: 3.0,  z3d: 0, color: "#f39c12", id: "ca" }
+  // ======================= PONTOS (coordenadas reais em metros) =======================
+  // Cada ponto tem: nome, coordenada real X (metros), cor e id.
+  // A coordenada Y (z no mundo AR) será sempre 0 (corredor reto).
+  const pontosReais = [
+    { name: "Banheiro Feminino", xReal: -4.0, color: "#e74c3c", id: "fem" },
+    { name: "Centro (Início)",   xReal: 0,    color: "#3498db", id: "centro" },
+    { name: "Banheiro Masculino",xReal: 3.5,  color: "#2ecc71", id: "masc" },
+    { name: "CA",               xReal: 8.0,  color: "#f39c12", id: "ca" }
   ];
 
-  let origem = null;   // ponto selecionado como origem
-  let destino = null;  // ponto selecionado como destino
+  // Parâmetros do mapa: escala (pixels por metro) e margens
+  const escala = 30; // 1 metro = 30 pixels
+  const margemEsquerda = 60;  // espaço à esquerda do primeiro ponto
+  const margemDireita = 60;   // espaço à direita do último ponto
 
-  // Elementos DOM
+  // Função para converter X real em X pixel (considerando escala e margens)
+  function realToPixel(xReal) {
+    const minXReal = Math.min(...pontosReais.map(p => p.xReal));
+    const offsetX = margemEsquerda - minXReal * escala;
+    return offsetX + xReal * escala;
+  }
+
+  // Calcula largura total do canvas com base nos pontos
+  function getCanvasWidth() {
+    const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
+    const minXReal = Math.min(...pontosReais.map(p => p.xReal));
+    const larguraMetros = maxXReal - minXReal;
+    const larguraPixels = larguraMetros * escala + margemEsquerda + margemDireita;
+    return Math.max(800, larguraPixels); // mínimo 800px para não ficar muito apertado
+  }
+
+  // Prepara os pontos com coordenadas 2D (pixels)
+  let pontos = [];
+  function atualizarPontos2D() {
+    pontos = pontosReais.map(p => ({
+      name: p.name,
+      x2d: realToPixel(p.xReal),
+      y2d: 150,  // linha horizontal fixa (pode ser ajustada se quiser)
+      color: p.color,
+      id: p.id,
+      xReal: p.xReal
+    }));
+  }
+
+  // Altura fixa do canvas (150px para o corredor + espaço para textos)
+  const canvasHeight = 250;
+
+  // Elementos
   const canvas = document.getElementById('indoor-map');
   const ctx = canvas.getContext('2d');
+  const mapContainer = document.getElementById('map-container');
   const statusText = document.getElementById('status');
   const btnIniciarAR = document.getElementById('btn-iniciar-ar');
   const boasVindas = document.getElementById('boas-vindas');
@@ -158,20 +208,32 @@
   const instrucao = document.getElementById('instrucao-ar');
   const rotaContainer = document.getElementById('rota-container');
 
-  // ========================== DESENHO DO MAPA 2D ==========================
+  let origem = null;
+  let destino = null;
+  let etapa = 'origem';
+
+  // Atualiza dimensões do canvas e desenha
+  function redimensionarCanvas() {
+    const largura = getCanvasWidth();
+    canvas.width = largura;
+    canvas.height = canvasHeight;
+    canvas.style.width = `${largura}px`;
+    canvas.style.height = `${canvasHeight}px`;
+    drawMap();
+  }
+
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Corredor cinza (linha reta horizontal)
+    // Desenha o corredor (linha horizontal)
     ctx.lineWidth = 40;
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(30, 200);
-    ctx.lineTo(300, 200);
+    ctx.moveTo(0, 150);
+    ctx.lineTo(canvas.width, 150);
     ctx.stroke();
 
-    // Desenha os pontos (círculos)
+    // Desenha cada ponto
     pontos.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x2d, p.y2d, 15, 0, Math.PI * 2);
@@ -179,12 +241,12 @@
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#000';
-      ctx.font = '12px Arial';
+      ctx.font = '14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(p.name, p.x2d, p.y2d - 20);
+      ctx.fillText(p.name, p.x2d, p.y2d - 22);
     });
 
-    // Desenha a rota entre origem e destino (se ambos existirem)
+    // Seta origem/destino
     if (origem && destino) {
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#0056b3';
@@ -195,21 +257,20 @@
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Marca origem com um círculo branco ao redor
+      // Círculo branco na origem
       ctx.beginPath();
       ctx.arc(origem.x2d, origem.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
       ctx.stroke();
       
-      // Marca destino com um círculo dourado
+      // Círculo dourado no destino
       ctx.beginPath();
       ctx.arc(destino.x2d, destino.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'gold';
       ctx.lineWidth = 3;
       ctx.stroke();
     } else if (origem) {
-      // Só origem selecionada
       ctx.beginPath();
       ctx.arc(origem.x2d, origem.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'white';
@@ -218,26 +279,34 @@
     }
   }
 
-  // ==================== LÓGICA DE SELEÇÃO ORIGEM/DESTINO ====================
-  let etapa = 'origem'; // 'origem' ou 'destino'
-
-  canvas.addEventListener('click', (event) => {
+  // Converter clique (considerando scroll) para coordenada X no canvas
+  function getCanvasXFromClick(clientX) {
     const rect = canvas.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-    
-    // Verifica qual ponto foi clicado
-    let pontoClicado = null;
+    const scrollLeft = mapContainer.scrollLeft;
+    const clickXCanvas = clientX - rect.left + scrollLeft;
+    return clickXCanvas;
+  }
+
+  // Encontrar ponto mais próximo (dentro de 25 pixels)
+  function encontrarPontoPorPixel(pixelX) {
+    let menorDist = 30;
+    let pontoEncontrado = null;
     for (let p of pontos) {
-      const dx = clickX - p.x2d;
-      const dy = clickY - p.y2d;
-      if (Math.sqrt(dx*dx + dy*dy) < 20) {
-        pontoClicado = p;
-        break;
+      const dx = pixelX - p.x2d;
+      const dy = 0; // ignorar Y para facilitar
+      if (Math.abs(dx) < menorDist) {
+        menorDist = Math.abs(dx);
+        pontoEncontrado = p;
       }
     }
+    return pontoEncontrado;
+  }
+
+  canvas.addEventListener('click', (event) => {
+    const pixelX = getCanvasXFromClick(event.clientX);
+    const pontoClicado = encontrarPontoPorPixel(pixelX);
     if (!pontoClicado) return;
-    
+
     if (etapa === 'origem') {
       origem = pontoClicado;
       destino = null;
@@ -245,20 +314,19 @@
       etapa = 'destino';
       btnIniciarAR.style.display = 'none';
       drawMap();
-    } else { // etapa === 'destino'
+    } else { // destino
       if (pontoClicado === origem) {
         statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
         return;
       }
       destino = pontoClicado;
       statusText.innerText = `🗺️ Rota definida: ${origem.name} → ${destino.name}. Pronto para navegar.`;
-      etapa = 'origem'; // reseta para nova seleção depois
+      etapa = 'origem';
       btnIniciarAR.style.display = 'block';
       drawMap();
     }
   });
 
-  // Permite reiniciar a seleção clicando em "Mudar de Rota" mais tarde
   function resetarSelecao() {
     origem = null;
     destino = null;
@@ -291,7 +359,6 @@
     controlsAR.style.display = 'flex';
   }
 
-  // Eventos do detector de chão
   reticulo.addEventListener('chao-encontrado', () => {
     instrucao.innerText = "Chão detectado! Fixe a rota para iniciar.";
     btnAncorar.style.display = 'block';
@@ -301,30 +368,22 @@
     btnAncorar.style.display = 'none';
   });
 
-  // ==================== GERAÇÃO DA ROTA DINÂMICA EM AR ====================
-  // Cria migalhas (cilindros azuis) ao longo do eixo X entre a origem e destino reais
-  function gerarRotaAR(origem3d, destino3d, nomeDestino, corDestino) {
+  // Geração da rota AR baseada nas coordenadas reais
+  function gerarRotaAR(origemReal, destinoReal, nomeDestino, corDestino) {
     rotaContainer.innerHTML = "";
-    
-    const xInicio = origem3d.x3d;
-    const xFim = destino3d.x3d;
-    const passo = 0.4; // metros entre cada migalha (ajuste para ficar suave)
+    const xInicio = origemReal.xReal;
+    const xFim = destinoReal.xReal;
+    const passo = 0.4;
     const distancia = Math.abs(xFim - xInicio);
     const direcao = Math.sign(xFim - xInicio);
-    
-    // Gera pontos intermediários (inclui início? melhor começar do primeiro passo)
-    let pontos = [];
+    let pontosRota = [];
     for (let x = xInicio + passo * direcao; Math.abs(x - xInicio) <= distancia; x += passo * direcao) {
-      // arredonda para evitar muitos pontos
-      pontos.push({ x: parseFloat(x.toFixed(2)), z: 0 });
+      pontosRota.push({ x: parseFloat(x.toFixed(2)), z: 0 });
     }
-    // Garante que o último ponto seja exatamente o destino
-    if (Math.abs(pontos[pontos.length-1].x - xFim) > 0.1) {
-      pontos.push({ x: xFim, z: 0 });
+    if (Math.abs(pontosRota[pontosRota.length-1]?.x - xFim) > 0.1) {
+      pontosRota.push({ x: xFim, z: 0 });
     }
-    
-    // Cria as migalhas
-    pontos.forEach(p => {
+    pontosRota.forEach(p => {
       let migalha = document.createElement('a-cylinder');
       migalha.setAttribute('position', `${p.x} 0.02 ${p.z}`);
       migalha.setAttribute('radius', '0.08');
@@ -333,8 +392,6 @@
       migalha.setAttribute('opacity', '0.9');
       rotaContainer.appendChild(migalha);
     });
-    
-    // Marcador de destino no último ponto
     let destinoMarker = document.createElement('a-entity');
     destinoMarker.setAttribute('position', `${xFim} 0 0`);
     destinoMarker.innerHTML = `
@@ -345,49 +402,44 @@
     rotaContainer.appendChild(destinoMarker);
   }
 
-  // ==================== FIXAR A ROTA (ANCORAGEM) ====================
   btnAncorar.addEventListener('click', () => {
     if (!origem || !destino) {
       instrucao.innerText = "Erro: nenhuma rota selecionada.";
       return;
     }
-    
-    // Obtém a posição do reticulo (chão onde o usuário está)
     const posAncora = reticulo.getAttribute('position');
     const rotAncora = reticulo.getAttribute('rotation');
     rotaContainer.setAttribute('position', posAncora);
     rotaContainer.setAttribute('rotation', rotAncora);
-    
-    // Gera a rota com base nas coordenadas reais dos pontos (metros)
-    gerarRotaAR(origem, destino, destino.name, destino.color);
-    
+    // Encontrar os objetos reais correspondentes
+    const origemReal = pontosReais.find(p => p.id === origem.id);
+    const destinoReal = pontosReais.find(p => p.id === destino.id);
+    gerarRotaAR(origemReal, destinoReal, destino.name, destino.color);
     rotaContainer.setAttribute('visible', 'true');
-    
-    // Desativa o detector de chão para não atrapalhar
-    if (reticulo.components['detector-chao']) {
-      reticulo.components['detector-chao'].ativo = false;
-    }
+    if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = false;
     reticulo.setAttribute('visible', 'false');
     instrucao.innerText = "Navegação Ativa! Siga as marcações azuis.";
     btnAncorar.style.display = 'none';
   });
 
-  // ==================== VOLTAR PARA SELEÇÃO DE ROTA ====================
   function alternarMapaInterno() {
     resetarSelecao();
     rotaContainer.setAttribute('visible', 'false');
     rotaContainer.innerHTML = "";
     controlsAR.style.display = 'none';
-    if (reticulo.components['detector-chao']) {
-      reticulo.components['detector-chao'].ativo = true;
-    }
+    if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = true;
     interfaceContainer.style.display = 'flex';
     drawMap();
   }
 
-  // Inicializa o mapa
+  // Inicialização
   window.addEventListener('load', () => {
-    drawMap();
+    atualizarPontos2D();
+    redimensionarCanvas();
+    // Garantir que o container de rolagem fique centralizado na origem? (opcional)
+    window.addEventListener('resize', () => {
+      redimensionarCanvas();
+    });
   });
 </script>
 </body>
