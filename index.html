@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Corredor 20m com Orientação Sul</title>
+  <title>GeoAR Indoor</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -133,8 +133,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>GeoAR Indoor - Corredor 20m</h2>
-  <p>QR Code na parede sul → Ao fixar, você estará virado para o SUL</p>
+  <h2>GeoAR Indoor</h2>
+  <p>Produzido pelo CIGEO (Laboratório de Cartografia Imersiva, Geoinformação e Engenharia Operacional)</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -145,8 +145,8 @@
     <div class="map-container" id="map-container">
       <canvas id="indoor-map"></canvas>
       <div class="orientacao">
-        <span>⬆️ Norte (salas)</span>
-        <span>⬇️ Sul (sua orientação ao fixar a rota)</span>
+        <span>⬇️ Sul</span>
+        <span>⬆️ Norte</span>
         <span class="seta-sul">↓</span>
       </div>
     </div>
@@ -420,7 +420,7 @@
     rotaContainer.setAttribute('visible', 'true');
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = false;
     reticulo.setAttribute('visible', 'false');
-    instrucao.innerText = "Navegando! Siga as marcas azuis (direita = Leste).";
+    instrucao.innerText = "Navegando! Siga as marcas azuis";
     btnAncorar.style.display = 'none';
   });
 
