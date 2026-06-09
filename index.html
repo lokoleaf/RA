@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Corredor 24m - Orientação Norte</title>
+  <title>GeoAR Indoor - Corredor 20m com Orientação Sul</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -98,8 +98,9 @@
       align-items: center;
       gap: 5px;
     }
-    .seta-norte {
+    .seta-sul {
       font-size: 20px;
+      transform: rotate(180deg);
       display: inline-block;
     }
     .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
@@ -132,8 +133,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>GeoAR Indoor - Corredor 24m (Norte)</h2>
-  <p>QR Code na parede norte → Ao fixar, você estará virado para o NORTE</p>
+  <h2>GeoAR Indoor - Corredor 20m</h2>
+  <p>QR Code na parede sul → Ao fixar, você estará virado para o SUL</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -144,13 +145,13 @@
     <div class="map-container" id="map-container">
       <canvas id="indoor-map"></canvas>
       <div class="orientacao">
-        <span>⬆️ Norte (sua orientação ao fixar)</span>
-        <span>⬇️ Sul (salas)</span>
-        <span class="seta-norte">↑</span>
+        <span>⬆️ Norte (salas)</span>
+        <span>⬇️ Sul (sua orientação ao fixar a rota)</span>
+        <span class="seta-sul">↓</span>
       </div>
     </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa | Para ir ao Banheiro ♀, siga as marcas azuis para a DIREITA (Leste).</div>
+    <div class="info">👆 Arraste o mapa → | Para ir ao Banheiro ♀, siga as marcas azuis para a DIREITA.</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -171,13 +172,14 @@
 </a-scene>
 
 <script>
-  // ======================= PONTOS REAIS (metros) =======================
+  // ======================= PONTOS REAIS (metros) com distâncias +1 metro =======================
+  // 4050F(0) -> 4054F(6) -> 4058F(11) -> 4064F(15) -> Banheiro♀(20)
   const pontosReais = [
     { name: "4050F", xReal: 0,  color: "#e74c3c", id: "sala1" },
-    { name: "4054F", xReal: 7,  color: "#3498db", id: "sala2" },
-    { name: "4058F", xReal: 13, color: "#2ecc71", id: "sala3" },
-    { name: "4064F", xReal: 18, color: "#f39c12", id: "sala4" },
-    { name: "Banheiro ♀", xReal: 24, color: "#9b59b6", id: "fem" }
+    { name: "4054F", xReal: 6,  color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 11, color: "#2ecc71", id: "sala3" },
+    { name: "4064F", xReal: 15, color: "#f39c12", id: "sala4" },
+    { name: "Banheiro ♀", xReal: 20, color: "#9b59b6", id: "fem" }
   ];
 
   const escala = 30;          // 30 pixels por metro
@@ -321,7 +323,7 @@
       drawMap();
     } else {
       if (pontoClicado === origem) {
-        statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
+        statusText.innerText = "⚠️ Destino não pode ser igual à origem.";
         return;
       }
       destino = pontoClicado;
@@ -365,7 +367,7 @@
   }
 
   reticulo.addEventListener('chao-encontrado', () => {
-    instrucao.innerText = "Chão detectado! Fixe a rota (você está virado para NORTE).";
+    instrucao.innerText = "Chão detectado! Fixe a rota (você está virado para SUL).";
     btnAncorar.style.display = 'block';
   });
   reticulo.addEventListener('chao-perdido', () => {
