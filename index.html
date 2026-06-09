@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Rota em L</title>
+  <title>GeoAR Indoor - Rota em L com Sala C</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     // Componente personalizado: detector de chão (hit test)
@@ -132,7 +132,8 @@
   // ======================= CONFIGURAÇÃO DOS PONTOS DE INTERESSE (POIs) =======================
   const pois = [
     { name: "Sala A (Esquerda)", x: 80, y: 150, color: "#e74c3c", id: "salaA" },
-    { name: "Sala B (Direita)",  x: 220, y: 150, color: "#2ecc71", id: "salaB" }
+    { name: "Sala B (Direita)",  x: 220, y: 150, color: "#2ecc71", id: "salaB" },
+    { name: "Sala C (Mais Direita)", x: 290, y: 150, color: "#f39c12", id: "salaC" }
   ];
 
   const userPos = { x: 150, y: 350 };    // posição do usuário no mapa 2D
@@ -164,11 +165,11 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(userPos.x, userPos.y);   // ponto inicial (150,350)
-    ctx.lineTo(centerNode.x, centerNode.y); // vértice (150,200)
-    ctx.lineTo(220, 150);                // ramo direito do L (destino Sala B)
+    ctx.moveTo(userPos.x, userPos.y);      // ponto inicial (150,350)
+    ctx.lineTo(centerNode.x, centerNode.y); // vértice (150,150)
+    ctx.lineTo(290, 150);                  // ramo direito até a Sala C (mais distante)
     ctx.moveTo(centerNode.x, centerNode.y);
-    ctx.lineTo(80, 150);                // ramo esquerdo (destino Sala A)
+    ctx.lineTo(80, 150);                   // ramo esquerdo (Sala A)
     ctx.stroke();
 
     if (destinoAtual) {
@@ -254,7 +255,7 @@
   // ==================== GERAÇÃO DA ROTA EM "L" NO MUNDO REAL (3D) ====================
   function gerarMigalhas(salaID) {
     rotaContainer.innerHTML = "";
-    // ROTA EM "L": 3 metros para frente (Z negativo) + 2 metros para a direita (X positivo)
+    // Parte reta: 3 metros para frente (Z negativo)
     const baseCaminho = [
       { x: 0,   z: -1.0 },
       { x: 0,   z: -2.0 },
@@ -263,24 +264,34 @@
     let extensao = [];
     let corDestino = "";
     let posFinal = "";
-    // Define a extensão (curva) conforme o destino escolhido
+
     if (salaID === 'salaA') {
-      // Vira à esquerda (X negativo)
+      // Vira à esquerda (X negativo) - anda 2m
       extensao = [
         { x: -1.0, z: -3.0 },
         { x: -2.0, z: -3.0 }
       ];
       corDestino = '#e74c3c';
       posFinal = '-2.0 0 -3.0';
-    } else {
-      // Vira à direita (X positivo)
+    } else if (salaID === 'salaB') {
+      // Vira à direita (X positivo) - anda 2m
       extensao = [
         { x: 1.0, z: -3.0 },
         { x: 2.0, z: -3.0 }
       ];
       corDestino = '#2ecc71';
       posFinal = '2.0 0 -3.0';
+    } else if (salaID === 'salaC') {
+      // Vira à direita (X positivo) - anda 3m (um metro além da Sala B)
+      extensao = [
+        { x: 1.0, z: -3.0 },
+        { x: 2.0, z: -3.0 },
+        { x: 3.0, z: -3.0 }
+      ];
+      corDestino = '#f39c12';
+      posFinal = '3.0 0 -3.0';
     }
+
     const caminhoCompleto = baseCaminho.concat(extensao);
     // Cria os cilindros (migalhas)
     caminhoCompleto.forEach(ponto => {
