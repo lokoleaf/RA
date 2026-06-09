@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Mapa Rolável (Correto)</title>
+  <title>GeoAR Indoor - Teste 4050F até Banheiro ♀</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -111,8 +111,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>GeoAR Indoor - Mapa Rolável</h2>
-  <p>Corredor extenso → arraste o mapa horizontalmente</p>
+  <h2>GeoAR Indoor - Teste 4050F → Banheiro ♀</h2>
+  <p>Corredor de 16 metros (arraste o mapa)</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -124,7 +124,7 @@
       <canvas id="indoor-map"></canvas>
     </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa para os lados para ver todo o corredor.</div>
+    <div class="info">👆 Arraste o mapa → | Dica: para testar, selecione origem 4050F e destino Banheiro ♀</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -145,31 +145,28 @@
 </a-scene>
 
 <script>
-  // ======================= PONTOS (coordenadas reais em metros) =======================
+  // ======================= PONTOS REAIS (metros) =======================
   const pontosReais = [
-    { name: "Banheiro Feminino", xReal: -4.0, color: "#e74c3c", id: "fem" },
-    { name: "Centro (Início)",   xReal: 0,    color: "#3498db", id: "centro" },
-    { name: "Banheiro Masculino",xReal: 3.5,  color: "#2ecc71", id: "masc" },
-    { name: "CA",               xReal: 8.0,  color: "#f39c12", id: "ca" }
+    { name: "4050F", xReal: 0,  color: "#e74c3c", id: "sala1" },
+    { name: "4054F", xReal: 5,  color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 9,  color: "#2ecc71", id: "sala3" },
+    { name: "4064F", xReal: 12, color: "#f39c12", id: "sala4" },
+    { name: "Banheiro ♀", xReal: 16, color: "#9b59b6", id: "fem" }
   ];
 
-  const escala = 30;          // 1 metro = 30 pixels
-  const margemLateral = 20;   // margem pequena após o primeiro e último ponto
+  const escala = 30;          // 30 pixels por metro
+  const margemLateral = 20;   // espaço extra nas bordas do canvas
 
-  // Cálculo dos limites reais
   const minXReal = Math.min(...pontosReais.map(p => p.xReal));
   const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
   const larguraPixels = (maxXReal - minXReal) * escala + margemLateral * 2;
   const canvasHeight = 250;
 
-  // Função para converter X real em X pixel
   function realToPixel(xReal) {
-    // offset para que o menor ponto fique a 'margemLateral' pixels da borda esquerda
     const offsetX = margemLateral - minXReal * escala;
     return offsetX + xReal * escala;
   }
 
-  // Prepara pontos 2D
   let pontos = [];
   function atualizarPontos2D() {
     pontos = pontosReais.map(p => ({
@@ -182,7 +179,7 @@
     }));
   }
 
-  // Elementos
+  // Elementos DOM
   const canvas = document.getElementById('indoor-map');
   const ctx = canvas.getContext('2d');
   const mapContainer = document.getElementById('map-container');
@@ -212,8 +209,7 @@
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Corredor: do primeiro ponto ao último (sem excesso)
+    // Corredor: do primeiro ao último ponto
     const xInicioCorredor = realToPixel(minXReal);
     const xFimCorredor = realToPixel(maxXReal);
     ctx.lineWidth = 40;
@@ -237,7 +233,6 @@
       ctx.fillText(p.name, p.x2d, p.y2d - 22);
     });
 
-    // Marcações de origem/destino
     if (origem && destino) {
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#0056b3';
@@ -247,13 +242,11 @@
       ctx.lineTo(destino.x2d, destino.y2d);
       ctx.stroke();
       ctx.setLineDash([]);
-      
       ctx.beginPath();
       ctx.arc(origem.x2d, origem.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
       ctx.stroke();
-      
       ctx.beginPath();
       ctx.arc(destino.x2d, destino.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'gold';
@@ -268,13 +261,10 @@
     }
   }
 
-  // Captura clique com scroll correto
   function getCanvasXFromClick(clientX) {
     const rect = canvas.getBoundingClientRect();
     const scrollLeft = mapContainer.scrollLeft;
-    // A posição X dentro do canvas (considerando que o canvas pode estar parcialmente visível)
     let x = clientX - rect.left + scrollLeft;
-    // Limitar dentro do canvas
     return Math.min(Math.max(x, 0), canvas.width);
   }
 
@@ -303,13 +293,13 @@
       etapa = 'destino';
       btnIniciarAR.style.display = 'none';
       drawMap();
-    } else { // destino
+    } else {
       if (pontoClicado === origem) {
-        statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
+        statusText.innerText = "⚠️ Destino não pode ser igual à origem.";
         return;
       }
       destino = pontoClicado;
-      statusText.innerText = `🗺️ Rota definida: ${origem.name} → ${destino.name}. Pronto para navegar.`;
+      statusText.innerText = `🗺️ Rota: ${origem.name} → ${destino.name}. Pronto para navegar.`;
       etapa = 'origem';
       btnIniciarAR.style.display = 'block';
       drawMap();
@@ -325,7 +315,7 @@
     drawMap();
   }
 
-  // ==================== AR ====================
+  // AR Functions
   function ativarSessaoXR() {
     if (scene.enterAR) scene.enterAR();
     else scene.enterVR();
@@ -349,11 +339,11 @@
   }
 
   reticulo.addEventListener('chao-encontrado', () => {
-    instrucao.innerText = "Chão detectado! Fixe a rota para iniciar.";
+    instrucao.innerText = "Chão detectado! Fixe a rota.";
     btnAncorar.style.display = 'block';
   });
   reticulo.addEventListener('chao-perdido', () => {
-    instrucao.innerText = "Mova o celular lentamente mirando o chão...";
+    instrucao.innerText = "Mova o celular olhando para o chão...";
     btnAncorar.style.display = 'none';
   });
 
@@ -391,10 +381,7 @@
   }
 
   btnAncorar.addEventListener('click', () => {
-    if (!origem || !destino) {
-      instrucao.innerText = "Erro: nenhuma rota selecionada.";
-      return;
-    }
+    if (!origem || !destino) return;
     const posAncora = reticulo.getAttribute('position');
     const rotAncora = reticulo.getAttribute('rotation');
     rotaContainer.setAttribute('position', posAncora);
@@ -405,7 +392,7 @@
     rotaContainer.setAttribute('visible', 'true');
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = false;
     reticulo.setAttribute('visible', 'false');
-    instrucao.innerText = "Navegação Ativa! Siga as marcações azuis.";
+    instrucao.innerText = "Navegando! Siga as marcas azuis.";
     btnAncorar.style.display = 'none';
   });
 
@@ -419,11 +406,9 @@
     drawMap();
   }
 
-  // Inicialização
   window.addEventListener('load', () => {
     atualizarPontos2D();
     redimensionarCanvas();
-    // Opcional: centralizar o mapa na origem ou no centro? Deixa como está.
   });
 </script>
 </body>
