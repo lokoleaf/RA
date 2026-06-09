@@ -98,8 +98,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>Sistema GeoAR Indoor - Rota em L</h2>
-  <p>Ande reto 3m, vire à direita e ande mais 2m.</p>
+  <h2>Sistema GeoAR Indoor</h2>
+  <p>Pronto para guia-lo até seu destino</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -131,12 +131,12 @@
 <script>
   // ======================= CONFIGURAÇÃO DOS PONTOS DE INTERESSE (POIs) =======================
   const pois = [
-    { name: "Sala A (Esquerda)", x: 200, y: 100, color: "#e74c3c", id: "salaA" },
-    { name: "Sala B (Direita)",  x: 300, y: 200, color: "#2ecc71", id: "salaB" }
+    { name: "Sala A (Esquerda)", x: 80, y: 150, color: "#e74c3c", id: "salaA" },
+    { name: "Sala B (Direita)",  x: 220, y: 150, color: "#2ecc71", id: "salaB" }
   ];
 
   const userPos = { x: 150, y: 350 };    // posição do usuário no mapa 2D
-  const centerNode = { x: 150, y: 200 };  // vértice do L (ponto de curva)
+  const centerNode = { x: 150, y: 150 };  // vértice do L (ponto de curva)
 
   let destinoAtual = null;
 
@@ -166,9 +166,9 @@
     ctx.beginPath();
     ctx.moveTo(userPos.x, userPos.y);   // ponto inicial (150,350)
     ctx.lineTo(centerNode.x, centerNode.y); // vértice (150,200)
-    ctx.lineTo(300, 200);                // ramo direito do L (destino Sala B)
+    ctx.lineTo(220, 150);                // ramo direito do L (destino Sala B)
     ctx.moveTo(centerNode.x, centerNode.y);
-    ctx.lineTo(200, 100);                // ramo esquerdo (destino Sala A)
+    ctx.lineTo(80, 150);                // ramo esquerdo (destino Sala A)
     ctx.stroke();
 
     if (destinoAtual) {
