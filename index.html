@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Rota em L com Sala C</title>
+  <title>GeoAR Indoor - Corredor Reto (Esquerda/Direita)</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
-    // Componente personalizado: detector de chão (hit test)
     AFRAME.registerComponent('detector-chao', {
       init: function () {
         this.xrHitTestSource = null;
@@ -98,8 +97,8 @@
 <body>
 
 <div id="boas-vindas">
-  <h2>Sistema GeoAR Indoor</h2>
-  <p>Pronto para guia-lo até seu destino</p>
+  <h2>GeoAR Indoor - Corredor Reto</h2>
+  <p>Escolha um destino à esquerda ou direita</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -129,15 +128,14 @@
 </a-scene>
 
 <script>
-  // ======================= CONFIGURAÇÃO DOS PONTOS DE INTERESSE (POIs) =======================
+  // ======================= CONFIGURAÇÃO DOS PONTOS DE INTERESSE =======================
   const pois = [
-    { name: "Banheiro ♀", x: 80, y: 150, color: "#e74c3c", id: "salaA" },
-    { name: "Banheiro ♂",  x: 220, y: 150, color: "#2ecc71", id: "salaB" },
-    { name: "CA", x: 290, y: 150, color: "#f39c12", id: "salaC" }
+    { name: "Banheiro ♀", x: 80, y: 200, color: "#e74c3c", id: "salaA" },
+    { name: "Banheiro ♂", x: 220, y: 200, color: "#2ecc71", id: "salaB" },
+    { name: "CA", x: 290, y: 200, color: "#f39c12", id: "salaC" }
   ];
 
-  const userPos = { x: 150, y: 350 };    // posição do usuário no mapa 2D
-  const centerNode = { x: 150, y: 150 };  // vértice do L (ponto de curva)
+  const userPos = { x: 150, y: 200 };   // usuário no centro horizontal/vertical
 
   let destinoAtual = null;
 
@@ -156,30 +154,26 @@
   const instrucao = document.getElementById('instrucao-ar');
   const rotaContainer = document.getElementById('rota-container');
 
-  // ========================== DESENHO DO MAPA 2D (CORREDOR EM "L") ==========================
+  // ========================== DESENHO DO MAPA 2D (CORREDOR RETO HORIZONTAL) ==========================
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Corredor cinza (fundo)
+    
+    // Corredor cinza (linha reta horizontal)
     ctx.lineWidth = 40;
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(userPos.x, userPos.y);      // ponto inicial (150,350)
-    ctx.lineTo(centerNode.x, centerNode.y); // vértice (150,150)
-    ctx.lineTo(290, 150);                  // ramo direito até a Sala C (mais distante)
-    ctx.moveTo(centerNode.x, centerNode.y);
-    ctx.lineTo(80, 150);                   // ramo esquerdo (Sala A)
+    ctx.moveTo(50, userPos.y);
+    ctx.lineTo(300, userPos.y);
     ctx.stroke();
 
     if (destinoAtual) {
-      // Rota destacada (tracejada) do usuário até o destino selecionado
+      // Rota tracejada do usuário ao destino
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#0056b3';
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
       ctx.moveTo(userPos.x, userPos.y);
-      ctx.lineTo(centerNode.x, centerNode.y);
       ctx.lineTo(destinoAtual.x, destinoAtual.y);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -206,7 +200,7 @@
     });
   }
 
-  // ==================== SELEÇÃO DO DESTINO VIA CLICK NO MAPA ====================
+  // ==================== SELEÇÃO DO DESTINO ====================
   canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
@@ -223,7 +217,7 @@
     });
   });
 
-  // ==================== FUNÇÕES DE CONTROLE DA SESSÃO AR ====================
+  // ==================== FUNÇÕES AR ====================
   function ativarSessaoXR() {
     if (scene.enterAR) scene.enterAR();
     else scene.enterVR();
@@ -242,9 +236,8 @@
     controlsAR.style.display = 'flex';
   }
 
-  // Eventos do detector de chão
   reticulo.addEventListener('chao-encontrado', () => {
-    instrucao.innerText = "Chão detectado! Posicione e fixe a rota.";
+    instrucao.innerText = "Chão detectado! Fixe a rota.";
     btnAncorar.style.display = 'block';
   });
   reticulo.addEventListener('chao-perdido', () => {
@@ -252,49 +245,51 @@
     btnAncorar.style.display = 'none';
   });
 
-  // ==================== GERAÇÃO DA ROTA EM "L" NO MUNDO REAL (3D) ====================
+  // ==================== GERAÇÃO DA ROTA LATERAL (SEM AVANÇO EM Z) ====================
   function gerarMigalhas(salaID) {
     rotaContainer.innerHTML = "";
-    // Parte reta: 3 metros para frente (Z negativo)
-    const baseCaminho = [
-      { x: 0,   z: -1.0 },
-      { x: 0,   z: -2.0 },
-      { x: 0,   z: -3.0 }
-    ];
-    let extensao = [];
+    
+    // Define os pontos da rota apenas no eixo X (direita/esquerda)
+    let pontos = [];
     let corDestino = "";
-    let posFinal = "";
+    let posFinalX = 0;
 
     if (salaID === 'salaA') {
-      // Vira à esquerda (X negativo) - anda 2m
-      extensao = [
-        { x: -1.0, z: -3.0 },
-        { x: -2.0, z: -3.0 }
+      // Esquerda: 2 metros (X negativo)
+      pontos = [
+        { x: -0.5, z: 0 },
+        { x: -1.0, z: 0 },
+        { x: -1.5, z: 0 },
+        { x: -2.0, z: 0 }
       ];
       corDestino = '#e74c3c';
-      posFinal = '-2.0 0 -3.0';
+      posFinalX = -2.0;
     } else if (salaID === 'salaB') {
-      // Vira à direita (X positivo) - anda 2m
-      extensao = [
-        { x: 1.0, z: -3.0 },
-        { x: 2.0, z: -3.0 }
+      // Direita: 2 metros
+      pontos = [
+        { x: 0.5, z: 0 },
+        { x: 1.0, z: 0 },
+        { x: 1.5, z: 0 },
+        { x: 2.0, z: 0 }
       ];
       corDestino = '#2ecc71';
-      posFinal = '2.0 0 -3.0';
+      posFinalX = 2.0;
     } else if (salaID === 'salaC') {
-      // Vira à direita (X positivo) - anda 3m (um metro além da Sala B)
-      extensao = [
-        { x: 1.0, z: -3.0 },
-        { x: 2.0, z: -3.0 },
-        { x: 3.0, z: -3.0 }
+      // Direita: 3 metros
+      pontos = [
+        { x: 0.5, z: 0 },
+        { x: 1.0, z: 0 },
+        { x: 1.5, z: 0 },
+        { x: 2.0, z: 0 },
+        { x: 2.5, z: 0 },
+        { x: 3.0, z: 0 }
       ];
       corDestino = '#f39c12';
-      posFinal = '3.0 0 -3.0';
+      posFinalX = 3.0;
     }
 
-    const caminhoCompleto = baseCaminho.concat(extensao);
-    // Cria os cilindros (migalhas)
-    caminhoCompleto.forEach(ponto => {
+    // Cria as migalhas (cilindros azuis)
+    pontos.forEach(ponto => {
       let migalha = document.createElement('a-cylinder');
       migalha.setAttribute('position', `${ponto.x} 0.02 ${ponto.z}`);
       migalha.setAttribute('radius', '0.08');
@@ -303,9 +298,10 @@
       migalha.setAttribute('opacity', '0.8');
       rotaContainer.appendChild(migalha);
     });
-    // Cria o marcador do destino (cone + cilindro + texto)
+
+    // Marcador do destino
     let destinoFinal = document.createElement('a-entity');
-    destinoFinal.setAttribute('position', posFinal);
+    destinoFinal.setAttribute('position', `${posFinalX} 0 0`);
     destinoFinal.innerHTML = `
       <a-cylinder color="${corDestino}" height="0.6" radius="0.12" position="0 0.05 0.3" rotation="90 0 0"></a-cylinder>
       <a-cone color="${corDestino}" height="0.4" radius-bottom="0.25" position="0 0.05 -0.2" rotation="-90 0 0"></a-cone>
@@ -314,7 +310,7 @@
     rotaContainer.appendChild(destinoFinal);
   }
 
-  // ==================== FIXAR A ROTA (ANCORAGEM) ====================
+  // ==================== FIXAR A ROTA ====================
   btnAncorar.addEventListener('click', () => {
     const position = reticulo.getAttribute('position');
     const rotation = reticulo.getAttribute('rotation');
@@ -322,16 +318,16 @@
     rotaContainer.setAttribute('rotation', rotation);
     rotaContainer.setAttribute('visible', 'true');
     gerarMigalhas(destinoAtual.id);
-    // Desativa o detector de chão para não atrapalhar
+    // Desativa o detector de chão
     if (reticulo.components['detector-chao']) {
       reticulo.components['detector-chao'].ativo = false;
     }
     reticulo.setAttribute('visible', 'false');
-    instrucao.innerText = "Navegação Ativa! Siga as marcações azuis.";
+    instrucao.innerText = "Navegação Ativa! Siga as marcações azuis para o lado.";
     btnAncorar.style.display = 'none';
   });
 
-  // ==================== VOLTAR PARA SELEÇÃO DE ROTA ====================
+  // ==================== VOLTAR ====================
   function alternarMapaInterno() {
     destinoAtual = null;
     statusText.innerText = "Destino: Nenhum";
