@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - 25m</title>
+  <title>GeoAR Indoor - Seleção por Botões</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -62,9 +62,12 @@
     #interface-container {
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
-      align-items: center; justify-content: center; pointer-events: auto;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
       padding: 20px;
       box-sizing: border-box;
+      overflow-y: auto;
     }
     .map-container {
       width: 90vw;
@@ -79,29 +82,76 @@
     #indoor-map {
       display: block;
       background: #fafafa;
-      cursor: pointer;
     }
+    .botoes-selecao {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+      padding: 0 10px;
+    }
+    .botao-ponto {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 40px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      color: white;
+      transition: transform 0.1s, opacity 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .botao-ponto:active { transform: scale(0.96); }
+    .botao-ponto.selecionado-origem { outline: 3px solid white; outline-offset: 2px; box-shadow: 0 0 0 2px blue; }
+    .botao-ponto.selecionado-destino { outline: 3px solid gold; outline-offset: 2px; }
     .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
     #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; text-align: center; }
     .btn-blue {
-      margin-top: 20px; padding: 15px 30px; border: none; border-radius: 25px;
-      background: #0056b3; color: white; font-weight: bold; font-size: 16px;
-      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: none;
+      margin-top: 10px;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 25px;
+      background: #0056b3;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      display: none;
     }
     #controls-ar {
-      position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-      display: none; flex-direction: column; align-items: center; gap: 12px;
-      pointer-events: auto; width: 90%;
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+      width: 90%;
     }
     #instrucao-ar {
-      background: rgba(0,0,0,0.8); color: #00d2ff; padding: 12px 20px;
-      border-radius: 10px; text-align: center; font-size: 15px; font-weight: bold;
+      background: rgba(0,0,0,0.8);
+      color: #00d2ff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: bold;
       border: 1px solid #00d2ff;
     }
     .btn-ar {
-      padding: 15px 35px; border: none; border-radius: 25px; font-weight: bold;
-      font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      width: 250px; text-align: center;
+      padding: 15px 35px;
+      border: none;
+      border-radius: 25px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      width: 250px;
+      text-align: center;
     }
     #btn-ancorar { background: #2ecc71; color: white; display: none; }
     #btn-voltar { background: #e74c3c; color: white; }
@@ -112,19 +162,20 @@
 
 <div id="boas-vindas">
   <h2>GeoAR Indoor</h2>
-  <p>(arraste o mapa)</p>
+  <p>Selecione origem e destino pelos botões</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
 <div id="dom-overlay">
   <div id="interface-container">
-    <div class="map-title">Selecione a Rota</div>
-    <div id="status">🔵 Clique na ORIGEM primeiro</div>
+    <div class="map-title">Mapa do Corredor</div>
+    <div id="status">🔵 Clique no botão da ORIGEM</div>
     <div class="map-container" id="map-container">
       <canvas id="indoor-map"></canvas>
     </div>
+    <div class="botoes-selecao" id="botoes-selecao"></div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa</div>
+    <div class="info">👆 Arraste o mapa horizontalmente | Escolha os pontos pelos botões coloridos</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -145,21 +196,17 @@
 </a-scene>
 
 <script>
-  // ======================= PONTOS REAIS (metros) - Total 25 metros =======================
-  // Distâncias proporcionais: 5,4,3,4 multiplicadas por 25/16 = 1.5625
-  // Novas distâncias: 7.8125, 6.25, 4.6875, 6.25
-  // Coordenadas: 0; 7.8125; 14.0625; 18.75; 25.0
+  // Pontos reais (metros) - total 25m
   const pontosReais = [
     { name: "4050F", xReal: 0,     color: "#e74c3c", id: "sala1" },
-    { name: "4054F", xReal: 7.81,  color: "#3498db", id: "sala2" },
-    { name: "4058F", xReal: 14.06, color: "#2ecc71", id: "sala3" },
+    { name: "4054F", xReal: 7.8125, color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 14.0625, color: "#2ecc71", id: "sala3" },
     { name: "4064F", xReal: 18.75, color: "#f39c12", id: "sala4" },
     { name: "Banheiro ♀", xReal: 25, color: "#9b59b6", id: "fem" }
   ];
 
-  const escala = 30;          // 30 pixels por metro
-  const margemLateral = 20;   // espaço extra nas bordas do canvas
-
+  const escala = 30;
+  const margemLateral = 30;
   const minXReal = Math.min(...pontosReais.map(p => p.xReal));
   const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
   const larguraPixels = (maxXReal - minXReal) * escala + margemLateral * 2;
@@ -197,6 +244,7 @@
   const btnAncorar = document.getElementById('btn-ancorar');
   const instrucao = document.getElementById('instrucao-ar');
   const rotaContainer = document.getElementById('rota-container');
+  const botoesDiv = document.getElementById('botoes-selecao');
 
   let origem = null;
   let destino = null;
@@ -212,18 +260,16 @@
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Corredor: do primeiro ao último ponto
-    const xInicioCorredor = realToPixel(minXReal);
-    const xFimCorredor = realToPixel(maxXReal);
+    const xInicio = realToPixel(minXReal);
+    const xFim = realToPixel(maxXReal);
     ctx.lineWidth = 40;
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(xInicioCorredor, 150);
-    ctx.lineTo(xFimCorredor, 150);
+    ctx.moveTo(xInicio, 150);
+    ctx.lineTo(xFim, 150);
     ctx.stroke();
 
-    // Desenha pontos
     pontos.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x2d, p.y2d, 15, 0, Math.PI * 2);
@@ -266,66 +312,58 @@
 
   function centralizarMapa() {
     if (!mapContainer || canvas.width === 0) return;
-    // Calcula o ponto central do canvas (metade da largura)
     const centroCanvas = canvas.width / 2;
-    // Largura visível do container
     const containerWidth = mapContainer.clientWidth;
-    // Posição de rolagem para centralizar o ponto central do canvas
     const scrollPos = centroCanvas - containerWidth / 2;
     mapContainer.scrollLeft = Math.max(0, scrollPos);
   }
 
-  function getCanvasXFromClick(clientX) {
-    const rect = canvas.getBoundingClientRect();
-    const scrollLeft = mapContainer.scrollLeft;
-    let x = clientX - rect.left + scrollLeft;
-    return Math.min(Math.max(x, 0), canvas.width);
+  // Cria botões para cada ponto
+  function criarBotoes() {
+    botoesDiv.innerHTML = '';
+    pontosReais.forEach((p, idx) => {
+      const btn = document.createElement('button');
+      btn.textContent = p.name;
+      btn.className = 'botao-ponto';
+      btn.style.backgroundColor = p.color;
+      btn.dataset.id = p.id;
+      btn.dataset.name = p.name;
+      btn.dataset.xReal = p.xReal;
+      btn.addEventListener('click', () => {
+        if (etapa === 'origem') {
+          origem = { name: p.name, id: p.id, xReal: p.xReal, x2d: realToPixel(p.xReal), color: p.color };
+          destino = null;
+          statusText.innerText = `✅ Origem: ${origem.name}. Agora clique no DESTINO (outro botão).`;
+          etapa = 'destino';
+          btnIniciarAR.style.display = 'none';
+          document.querySelectorAll('.botao-ponto').forEach(b => b.classList.remove('selecionado-origem', 'selecionado-destino'));
+          btn.classList.add('selecionado-origem');
+          drawMap();
+        } else {
+          if (origem && p.id === origem.id) {
+            statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
+            return;
+          }
+          destino = { name: p.name, id: p.id, xReal: p.xReal, x2d: realToPixel(p.xReal), color: p.color };
+          statusText.innerText = `🗺️ Rota: ${origem.name} → ${destino.name}. Pronto para navegar.`;
+          etapa = 'origem';
+          btnIniciarAR.style.display = 'block';
+          document.querySelectorAll('.botao-ponto').forEach(b => b.classList.remove('selecionado-destino'));
+          btn.classList.add('selecionado-destino');
+          drawMap();
+        }
+      });
+      botoesDiv.appendChild(btn);
+    });
   }
-
-  function encontrarPontoPorPixel(pixelX) {
-    let menorDist = 35;
-    let pontoEncontrado = null;
-    for (let p of pontos) {
-      const dx = Math.abs(pixelX - p.x2d);
-      if (dx < menorDist) {
-        menorDist = dx;
-        pontoEncontrado = p;
-      }
-    }
-    return pontoEncontrado;
-  }
-
-  canvas.addEventListener('click', (event) => {
-    const pixelX = getCanvasXFromClick(event.clientX);
-    const pontoClicado = encontrarPontoPorPixel(pixelX);
-    if (!pontoClicado) return;
-
-    if (etapa === 'origem') {
-      origem = pontoClicado;
-      destino = null;
-      statusText.innerText = `✅ Origem: ${origem.name}. Agora clique no DESTINO.`;
-      etapa = 'destino';
-      btnIniciarAR.style.display = 'none';
-      drawMap();
-    } else {
-      if (pontoClicado === origem) {
-        statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
-        return;
-      }
-      destino = pontoClicado;
-      statusText.innerText = `🗺️ Rota: ${origem.name} → ${destino.name}. Pronto para navegar.`;
-      etapa = 'origem';
-      btnIniciarAR.style.display = 'block';
-      drawMap();
-    }
-  });
 
   function resetarSelecao() {
     origem = null;
     destino = null;
     etapa = 'origem';
-    statusText.innerText = "🔵 Clique na ORIGEM primeiro";
+    statusText.innerText = "🔵 Clique no botão da ORIGEM";
     btnIniciarAR.style.display = 'none';
+    document.querySelectorAll('.botao-ponto').forEach(b => b.classList.remove('selecionado-origem', 'selecionado-destino'));
     drawMap();
   }
 
@@ -340,7 +378,6 @@
       boasVindas.style.display = 'none';
       domOverlay.style.display = 'block';
       interfaceContainer.style.display = 'flex';
-      // Pequeno atraso para garantir que o canvas já esteja desenhado
       setTimeout(centralizarMapa, 100);
     }
   });
@@ -420,19 +457,15 @@
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = true;
     interfaceContainer.style.display = 'flex';
     drawMap();
-    // Após reexibir o mapa, centralizar novamente
     setTimeout(centralizarMapa, 100);
   }
 
   window.addEventListener('load', () => {
     atualizarPontos2D();
     redimensionarCanvas();
-    // Centraliza o mapa após carregar
+    criarBotoes();
     centralizarMapa();
-    // Reajusta centralização se a janela for redimensionada
-    window.addEventListener('resize', () => {
-      centralizarMapa();
-    });
+    window.addEventListener('resize', () => centralizarMapa());
   });
 </script>
 </body>
