@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor - Mapa Rolável Horizontal</title>
+  <title>GeoAR Indoor - Mapa Rolável (Correto)</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -82,7 +82,7 @@
       cursor: pointer;
     }
     .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
-    #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; }
+    #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; text-align: center; }
     .btn-blue {
       margin-top: 20px; padding: 15px 30px; border: none; border-radius: 25px;
       background: #0056b3; color: white; font-weight: bold; font-size: 16px;
@@ -105,7 +105,7 @@
     }
     #btn-ancorar { background: #2ecc71; color: white; display: none; }
     #btn-voltar { background: #e74c3c; color: white; }
-    .info { font-size: 14px; margin-top: 10px; color: #333; background: #eee; padding: 5px; border-radius: 10px; }
+    .info { font-size: 14px; margin-top: 10px; color: #333; background: #eee; padding: 5px; border-radius: 10px; text-align: center; }
   </style>
 </head>
 <body>
@@ -146,8 +146,6 @@
 
 <script>
   // ======================= PONTOS (coordenadas reais em metros) =======================
-  // Cada ponto tem: nome, coordenada real X (metros), cor e id.
-  // A coordenada Y (z no mundo AR) será sempre 0 (corredor reto).
   const pontosReais = [
     { name: "Banheiro Feminino", xReal: -4.0, color: "#e74c3c", id: "fem" },
     { name: "Centro (Início)",   xReal: 0,    color: "#3498db", id: "centro" },
@@ -155,42 +153,34 @@
     { name: "CA",               xReal: 8.0,  color: "#f39c12", id: "ca" }
   ];
 
-  // Parâmetros do mapa: escala (pixels por metro) e margens
-  const escala = 30; // 1 metro = 30 pixels
-  const margemEsquerda = 60;  // espaço à esquerda do primeiro ponto
-  const margemDireita = 60;   // espaço à direita do último ponto
+  const escala = 30;          // 1 metro = 30 pixels
+  const margemLateral = 20;   // margem pequena após o primeiro e último ponto
 
-  // Função para converter X real em X pixel (considerando escala e margens)
+  // Cálculo dos limites reais
+  const minXReal = Math.min(...pontosReais.map(p => p.xReal));
+  const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
+  const larguraPixels = (maxXReal - minXReal) * escala + margemLateral * 2;
+  const canvasHeight = 250;
+
+  // Função para converter X real em X pixel
   function realToPixel(xReal) {
-    const minXReal = Math.min(...pontosReais.map(p => p.xReal));
-    const offsetX = margemEsquerda - minXReal * escala;
+    // offset para que o menor ponto fique a 'margemLateral' pixels da borda esquerda
+    const offsetX = margemLateral - minXReal * escala;
     return offsetX + xReal * escala;
   }
 
-  // Calcula largura total do canvas com base nos pontos
-  function getCanvasWidth() {
-    const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
-    const minXReal = Math.min(...pontosReais.map(p => p.xReal));
-    const larguraMetros = maxXReal - minXReal;
-    const larguraPixels = larguraMetros * escala + margemEsquerda + margemDireita;
-    return Math.max(800, larguraPixels); // mínimo 800px para não ficar muito apertado
-  }
-
-  // Prepara os pontos com coordenadas 2D (pixels)
+  // Prepara pontos 2D
   let pontos = [];
   function atualizarPontos2D() {
     pontos = pontosReais.map(p => ({
       name: p.name,
       x2d: realToPixel(p.xReal),
-      y2d: 150,  // linha horizontal fixa (pode ser ajustada se quiser)
+      y2d: 150,
       color: p.color,
       id: p.id,
       xReal: p.xReal
     }));
   }
-
-  // Altura fixa do canvas (150px para o corredor + espaço para textos)
-  const canvasHeight = 250;
 
   // Elementos
   const canvas = document.getElementById('indoor-map');
@@ -212,28 +202,29 @@
   let destino = null;
   let etapa = 'origem';
 
-  // Atualiza dimensões do canvas e desenha
   function redimensionarCanvas() {
-    const largura = getCanvasWidth();
-    canvas.width = largura;
+    canvas.width = larguraPixels;
     canvas.height = canvasHeight;
-    canvas.style.width = `${largura}px`;
+    canvas.style.width = `${larguraPixels}px`;
     canvas.style.height = `${canvasHeight}px`;
     drawMap();
   }
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Desenha o corredor (linha horizontal)
+    
+    // Corredor: do primeiro ponto ao último (sem excesso)
+    const xInicioCorredor = realToPixel(minXReal);
+    const xFimCorredor = realToPixel(maxXReal);
     ctx.lineWidth = 40;
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, 150);
-    ctx.lineTo(canvas.width, 150);
+    ctx.moveTo(xInicioCorredor, 150);
+    ctx.lineTo(xFimCorredor, 150);
     ctx.stroke();
 
-    // Desenha cada ponto
+    // Desenha pontos
     pontos.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x2d, p.y2d, 15, 0, Math.PI * 2);
@@ -246,7 +237,7 @@
       ctx.fillText(p.name, p.x2d, p.y2d - 22);
     });
 
-    // Seta origem/destino
+    // Marcações de origem/destino
     if (origem && destino) {
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#0056b3';
@@ -257,14 +248,12 @@
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Círculo branco na origem
       ctx.beginPath();
       ctx.arc(origem.x2d, origem.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
       ctx.stroke();
       
-      // Círculo dourado no destino
       ctx.beginPath();
       ctx.arc(destino.x2d, destino.y2d, 18, 0, Math.PI * 2);
       ctx.strokeStyle = 'gold';
@@ -279,23 +268,23 @@
     }
   }
 
-  // Converter clique (considerando scroll) para coordenada X no canvas
+  // Captura clique com scroll correto
   function getCanvasXFromClick(clientX) {
     const rect = canvas.getBoundingClientRect();
     const scrollLeft = mapContainer.scrollLeft;
-    const clickXCanvas = clientX - rect.left + scrollLeft;
-    return clickXCanvas;
+    // A posição X dentro do canvas (considerando que o canvas pode estar parcialmente visível)
+    let x = clientX - rect.left + scrollLeft;
+    // Limitar dentro do canvas
+    return Math.min(Math.max(x, 0), canvas.width);
   }
 
-  // Encontrar ponto mais próximo (dentro de 25 pixels)
   function encontrarPontoPorPixel(pixelX) {
-    let menorDist = 30;
+    let menorDist = 35;
     let pontoEncontrado = null;
     for (let p of pontos) {
-      const dx = pixelX - p.x2d;
-      const dy = 0; // ignorar Y para facilitar
-      if (Math.abs(dx) < menorDist) {
-        menorDist = Math.abs(dx);
+      const dx = Math.abs(pixelX - p.x2d);
+      if (dx < menorDist) {
+        menorDist = dx;
         pontoEncontrado = p;
       }
     }
@@ -336,7 +325,7 @@
     drawMap();
   }
 
-  // ==================== FUNÇÕES AR ====================
+  // ==================== AR ====================
   function ativarSessaoXR() {
     if (scene.enterAR) scene.enterAR();
     else scene.enterVR();
@@ -368,7 +357,6 @@
     btnAncorar.style.display = 'none';
   });
 
-  // Geração da rota AR baseada nas coordenadas reais
   function gerarRotaAR(origemReal, destinoReal, nomeDestino, corDestino) {
     rotaContainer.innerHTML = "";
     const xInicio = origemReal.xReal;
@@ -380,7 +368,7 @@
     for (let x = xInicio + passo * direcao; Math.abs(x - xInicio) <= distancia; x += passo * direcao) {
       pontosRota.push({ x: parseFloat(x.toFixed(2)), z: 0 });
     }
-    if (Math.abs(pontosRota[pontosRota.length-1]?.x - xFim) > 0.1) {
+    if (pontosRota.length === 0 || Math.abs(pontosRota[pontosRota.length-1]?.x - xFim) > 0.1) {
       pontosRota.push({ x: xFim, z: 0 });
     }
     pontosRota.forEach(p => {
@@ -411,7 +399,6 @@
     const rotAncora = reticulo.getAttribute('rotation');
     rotaContainer.setAttribute('position', posAncora);
     rotaContainer.setAttribute('rotation', rotAncora);
-    // Encontrar os objetos reais correspondentes
     const origemReal = pontosReais.find(p => p.id === origem.id);
     const destinoReal = pontosReais.find(p => p.id === destino.id);
     gerarRotaAR(origemReal, destinoReal, destino.name, destino.color);
@@ -436,10 +423,7 @@
   window.addEventListener('load', () => {
     atualizarPontos2D();
     redimensionarCanvas();
-    // Garantir que o container de rolagem fique centralizado na origem? (opcional)
-    window.addEventListener('resize', () => {
-      redimensionarCanvas();
-    });
+    // Opcional: centralizar o mapa na origem ou no centro? Deixa como está.
   });
 </script>
 </body>
