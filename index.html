@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GeoAR Indoor</title>
+  <title>GeoAR Indoor - 25m</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script>
     AFRAME.registerComponent('detector-chao', {
@@ -75,33 +75,11 @@
       background: #fafafa;
       margin: 10px 0;
       -webkit-overflow-scrolling: touch;
-      position: relative;
     }
     #indoor-map {
       display: block;
       background: #fafafa;
       cursor: pointer;
-    }
-    .orientacao {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      pointer-events: none;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .seta-sul {
-      font-size: 20px;
-      transform: rotate(180deg);
-      display: inline-block;
     }
     .map-title { font-size: 1.2rem; font-weight: bold; color: #333; text-align: center; margin-bottom: 10px; }
     #status { font-size: 1rem; color: #0056b3; font-weight: bold; background: white; padding: 5px 10px; border-radius: 20px; margin-bottom: 10px; text-align: center; }
@@ -134,7 +112,7 @@
 
 <div id="boas-vindas">
   <h2>GeoAR Indoor</h2>
-  <p>Produzido pelo CIGEO (Laboratório de Cartografia Imersiva, Geoinformação e Engenharia Operacional)</p>
+  <p>(arraste o mapa)</p>
   <button class="btn-ar" style="background:#fff; color:#0056b3;" onclick="ativarSessaoXR()">Acessar Prédio</button>
 </div>
 
@@ -144,14 +122,9 @@
     <div id="status">🔵 Clique na ORIGEM primeiro</div>
     <div class="map-container" id="map-container">
       <canvas id="indoor-map"></canvas>
-      <div class="orientacao">
-        <span>⬇️ Sul</span>
-        <span>⬆️ Norte</span>
-        <span class="seta-sul">↓</span>
-      </div>
     </div>
     <button class="btn-blue" id="btn-iniciar-ar" onclick="irParaVisaoCamera()">Iniciar Navegação AR</button>
-    <div class="info">👆 Arraste o mapa → | Para ir ao Banheiro ♀, siga as marcas azuis para a DIREITA.</div>
+    <div class="info">👆 Arraste o mapa</div>
   </div>
   <div id="controls-ar">
     <div id="instrucao-ar">Mova o celular olhando para o chão...</div>
@@ -172,18 +145,20 @@
 </a-scene>
 
 <script>
-  // ======================= PONTOS REAIS (metros) com distâncias +1 metro =======================
-  // 4050F(0) -> 4054F(6) -> 4058F(11) -> 4064F(15) -> Banheiro♀(20)
+  // ======================= PONTOS REAIS (metros) - Total 25 metros =======================
+  // Distâncias proporcionais: 5,4,3,4 multiplicadas por 25/16 = 1.5625
+  // Novas distâncias: 7.8125, 6.25, 4.6875, 6.25
+  // Coordenadas: 0; 7.8125; 14.0625; 18.75; 25.0
   const pontosReais = [
-    { name: "4050F", xReal: 0,  color: "#e74c3c", id: "sala1" },
-    { name: "4054F", xReal: 6,  color: "#3498db", id: "sala2" },
-    { name: "4058F", xReal: 11, color: "#2ecc71", id: "sala3" },
-    { name: "4064F", xReal: 15, color: "#f39c12", id: "sala4" },
-    { name: "Banheiro ♀", xReal: 20, color: "#9b59b6", id: "fem" }
+    { name: "4050F", xReal: 0,     color: "#e74c3c", id: "sala1" },
+    { name: "4054F", xReal: 7.81,  color: "#3498db", id: "sala2" },
+    { name: "4058F", xReal: 14.06, color: "#2ecc71", id: "sala3" },
+    { name: "4064F", xReal: 18.75, color: "#f39c12", id: "sala4" },
+    { name: "Banheiro ♀", xReal: 25, color: "#9b59b6", id: "fem" }
   ];
 
   const escala = 30;          // 30 pixels por metro
-  const margemLateral = 20;   // margem nas bordas
+  const margemLateral = 20;   // espaço extra nas bordas do canvas
 
   const minXReal = Math.min(...pontosReais.map(p => p.xReal));
   const maxXReal = Math.max(...pontosReais.map(p => p.xReal));
@@ -237,7 +212,7 @@
 
   function drawMap() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Corredor do primeiro ao último ponto
+    // Corredor: do primeiro ao último ponto
     const xInicioCorredor = realToPixel(minXReal);
     const xFimCorredor = realToPixel(maxXReal);
     ctx.lineWidth = 40;
@@ -289,6 +264,17 @@
     }
   }
 
+  function centralizarMapa() {
+    if (!mapContainer || canvas.width === 0) return;
+    // Calcula o ponto central do canvas (metade da largura)
+    const centroCanvas = canvas.width / 2;
+    // Largura visível do container
+    const containerWidth = mapContainer.clientWidth;
+    // Posição de rolagem para centralizar o ponto central do canvas
+    const scrollPos = centroCanvas - containerWidth / 2;
+    mapContainer.scrollLeft = Math.max(0, scrollPos);
+  }
+
   function getCanvasXFromClick(clientX) {
     const rect = canvas.getBoundingClientRect();
     const scrollLeft = mapContainer.scrollLeft;
@@ -323,7 +309,7 @@
       drawMap();
     } else {
       if (pontoClicado === origem) {
-        statusText.innerText = "⚠️ Destino não pode ser igual à origem.";
+        statusText.innerText = "⚠️ Destino não pode ser igual à origem. Escolha outro destino.";
         return;
       }
       destino = pontoClicado;
@@ -354,6 +340,8 @@
       boasVindas.style.display = 'none';
       domOverlay.style.display = 'block';
       interfaceContainer.style.display = 'flex';
+      // Pequeno atraso para garantir que o canvas já esteja desenhado
+      setTimeout(centralizarMapa, 100);
     }
   });
 
@@ -367,7 +355,7 @@
   }
 
   reticulo.addEventListener('chao-encontrado', () => {
-    instrucao.innerText = "Chão detectado! Fixe a rota (você está virado para SUL).";
+    instrucao.innerText = "Chão detectado! Fixe a rota.";
     btnAncorar.style.display = 'block';
   });
   reticulo.addEventListener('chao-perdido', () => {
@@ -420,7 +408,7 @@
     rotaContainer.setAttribute('visible', 'true');
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = false;
     reticulo.setAttribute('visible', 'false');
-    instrucao.innerText = "Navegando! Siga as marcas azuis";
+    instrucao.innerText = "Navegando! Siga as marcas azuis.";
     btnAncorar.style.display = 'none';
   });
 
@@ -432,11 +420,19 @@
     if (reticulo.components['detector-chao']) reticulo.components['detector-chao'].ativo = true;
     interfaceContainer.style.display = 'flex';
     drawMap();
+    // Após reexibir o mapa, centralizar novamente
+    setTimeout(centralizarMapa, 100);
   }
 
   window.addEventListener('load', () => {
     atualizarPontos2D();
     redimensionarCanvas();
+    // Centraliza o mapa após carregar
+    centralizarMapa();
+    // Reajusta centralização se a janela for redimensionada
+    window.addEventListener('resize', () => {
+      centralizarMapa();
+    });
   });
 </script>
 </body>
